@@ -5,6 +5,9 @@ import android.content.SharedPreferences
 import com.example.model.Difficulty
 import com.example.model.Player
 import com.example.model.Score
+import com.example.online.model.OnlineUser
+import java.util.UUID
+import kotlin.random.Random
 
 class GamePreferences(context: Context) {
     private val prefs: SharedPreferences =
@@ -23,6 +26,11 @@ class GamePreferences(context: Context) {
         private const val KEY_SAVED_BOARD = "saved_board"
         private const val KEY_SAVED_TURN = "saved_turn"
         private const val KEY_SAVED_MODE = "saved_mode"
+
+        private const val KEY_USER_UID = "user_uid"
+        private const val KEY_USER_DISPLAY_NAME = "user_display_name"
+        private const val KEY_USER_AUTH_TYPE = "user_auth_type"
+        private const val KEY_USER_EMAIL = "user_email"
     }
 
     fun getScore(): Score {
@@ -116,5 +124,61 @@ class GamePreferences(context: Context) {
 
         val turn = if (turnStr == "O") Player.O else Player.X
         return Triple(board, turn, modeStr)
+    }
+
+    fun hasUserSession(): Boolean {
+        return prefs.contains(KEY_USER_UID)
+    }
+
+    fun saveUserSession(uid: String, displayName: String, authType: String, email: String? = null) {
+        prefs.edit()
+            .putString(KEY_USER_UID, uid)
+            .putString(KEY_USER_DISPLAY_NAME, displayName)
+            .putString(KEY_USER_AUTH_TYPE, authType)
+            .putString(KEY_USER_EMAIL, email)
+            .apply()
+    }
+
+    fun loadUserSession(): OnlineUser? {
+        val uid = prefs.getString(KEY_USER_UID, null) ?: return null
+        val displayName = prefs.getString(KEY_USER_DISPLAY_NAME, "Player") ?: "Player"
+        val authType = prefs.getString(KEY_USER_AUTH_TYPE, "guest") ?: "guest"
+        val email = prefs.getString(KEY_USER_EMAIL, null)
+
+        val score = getScore()
+        return OnlineUser(
+            uid = uid,
+            displayName = displayName,
+            authType = authType,
+            email = email,
+            wins = score.xWins,
+            draws = score.draws,
+            onlineStatus = true
+        )
+    }
+
+    fun getOrCreateGuestUser(): OnlineUser {
+        val existing = loadUserSession()
+        if (existing != null) {
+            return existing
+        }
+        val guestUid = "guest_" + UUID.randomUUID().toString().take(8)
+        val defaultName = "Player${Random.nextInt(1000, 9999)}"
+        saveUserSession(guestUid, defaultName, "guest", null)
+        return OnlineUser(
+            uid = guestUid,
+            displayName = defaultName,
+            authType = "guest",
+            onlineStatus = true
+        )
+    }
+
+    fun clearUserSession() {
+        prefs.edit()
+            .remove(KEY_USER_UID)
+            .remove(KEY_USER_DISPLAY_NAME)
+            .remove(KEY_USER_AUTH_TYPE)
+            .remove(KEY_USER_EMAIL)
+            .apply()
     }
 }

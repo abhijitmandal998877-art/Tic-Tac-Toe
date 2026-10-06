@@ -77,13 +77,18 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun checkInitialAuthState() {
         viewModelScope.launch {
-            delay(900L) // Smooth splash branding experience
+            delay(800L) // Smooth splash branding experience
+            FirebaseManager.initialize(getApplication())
+
             if (FirebaseManager.isAuthenticated()) {
                 val uid = FirebaseManager.getCurrentUid()
                 if (uid != null) {
                     observeUserProfile(uid)
                 }
                 _uiState.update { it.copy(currentScreen = Screen.HOME) }
+            } else if (prefs.hasUserSession()) {
+                val saved = prefs.loadUserSession()
+                _uiState.update { it.copy(currentUser = saved, currentScreen = Screen.HOME) }
             } else {
                 _uiState.update { it.copy(currentScreen = Screen.AUTH) }
             }
@@ -94,7 +99,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         profileJob?.cancel()
         profileJob = viewModelScope.launch {
             FirebaseManager.observeUserProfile(uid).collect { profile ->
-                _uiState.update { it.copy(currentUser = profile) }
+                if (profile != null) {
+                    _uiState.update { it.copy(currentUser = profile) }
+                }
             }
         }
     }
@@ -103,28 +110,29 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         soundManager.playClick()
         _uiState.update { it.copy(isAuthLoading = true, authError = null) }
         viewModelScope.launch {
-            val result = FirebaseManager.signInAnonymously()
-            result.fold(
-                onSuccess = { uid ->
-                    observeUserProfile(uid)
-                    soundManager.playWin()
-                    _uiState.update {
-                        it.copy(
-                            isAuthLoading = false,
-                            currentScreen = Screen.HOME,
-                            authError = null
-                        )
-                    }
-                },
-                onFailure = { error ->
-                    _uiState.update {
-                        it.copy(
-                            isAuthLoading = false,
-                            authError = error.message ?: "Guest sign-in failed. Please check internet connection."
-                        )
-                    }
-                }
-            )
+            // Attempt Firebase Anonymous authentication first
+            val firebaseResult = FirebaseManager.signInAnonymously(getApplication())
+            val uid = firebaseResult.getOrNull()
+
+            val guestProfile = if (uid != null) {
+                val name = "Player${(1000..9999).random()}"
+                prefs.saveUserSession(uid = uid, displayName = name, authType = "guest")
+                observeUserProfile(uid)
+                OnlineUser(uid = uid, displayName = name, authType = "guest", onlineStatus = true)
+            } else {
+                // Graceful offline fallback - never block the user from playing
+                prefs.getOrCreateGuestUser()
+            }
+
+            soundManager.playWin()
+            _uiState.update {
+                it.copy(
+                    currentUser = guestProfile,
+                    isAuthLoading = false,
+                    currentScreen = Screen.HOME,
+                    authError = null
+                )
+            }
         }
     }
 
@@ -134,11 +142,24 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val result = GoogleAuthHelper.signInWithGoogle(context)
             result.fold(
-                onSuccess = { uid ->
-                    observeUserProfile(uid)
+                onSuccess = { googleResult ->
+                    prefs.saveUserSession(
+                        uid = googleResult.uid,
+                        displayName = googleResult.displayName,
+                        authType = "google",
+                        email = googleResult.email
+                    )
+                    observeUserProfile(googleResult.uid)
                     soundManager.playWin()
                     _uiState.update {
                         it.copy(
+                            currentUser = OnlineUser(
+                                uid = googleResult.uid,
+                                displayName = googleResult.displayName,
+                                authType = "google",
+                                email = googleResult.email,
+                                onlineStatus = true
+                            ),
                             isAuthLoading = false,
                             currentScreen = Screen.HOME,
                             authError = null
@@ -165,6 +186,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         soundManager.playClick()
         profileJob?.cancel()
         profileJob = null
+        prefs.clearUserSession()
         FirebaseManager.signOut()
         _uiState.update {
             it.copy(

@@ -1,5 +1,6 @@
 package com.example.online.repository
 
+import android.content.Context
 import com.example.logic.GameEngine
 import com.example.model.Player
 import com.example.online.model.OnlinePlayerData
@@ -21,6 +22,14 @@ import kotlinx.coroutines.tasks.await
 import kotlin.random.Random
 
 object FirebaseManager {
+
+    fun initialize(context: Context) {
+        try {
+            if (FirebaseApp.getApps(context).isEmpty()) {
+                FirebaseApp.initializeApp(context)
+            }
+        } catch (_: Throwable) { }
+    }
 
     private val auth: FirebaseAuth?
         get() = try {
@@ -64,7 +73,10 @@ object FirebaseManager {
         return auth?.currentUser?.displayName
     }
 
-    suspend fun signInAnonymously(): Result<String> {
+    suspend fun signInAnonymously(context: Context? = null): Result<String> {
+        if (context != null) {
+            initialize(context)
+        }
         val currentAuth = auth ?: return Result.failure(Exception("Firebase is unavailable"))
         return try {
             val result = currentAuth.signInAnonymously().await()
