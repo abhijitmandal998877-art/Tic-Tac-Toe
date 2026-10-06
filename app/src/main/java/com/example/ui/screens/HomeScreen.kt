@@ -31,7 +31,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SmartToy
@@ -60,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.Difficulty
 import com.example.model.GameMode
+import com.example.online.model.OnlineUser
 import com.example.ui.components.GameBackground
 import com.example.ui.theme.DarkSurface
 import com.example.ui.theme.DarkSurfaceVariant
@@ -78,10 +81,12 @@ fun HomeScreen(
     onStartTwoPlayer: () -> Unit,
     onStartVsAi: (Difficulty) -> Unit,
     onContinueTapped: () -> Unit,
+    onOpenOnlinePlay: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenHowToPlay: () -> Unit,
     onOpenDeveloperSection: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    currentUser: OnlineUser? = null
 ) {
     var showAiDifficultyOptions by remember { mutableStateOf(false) }
     var currentAiDifficulty by remember { mutableStateOf(selectedDifficulty) }
@@ -98,7 +103,49 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            // Player Profile Mini Badge
+            if (currentUser != null) {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(DarkSurfaceVariant.copy(alpha = 0.7f))
+                        .border(1.dp, Color(0xFF283854), RoundedCornerShape(20.dp))
+                        .clickable { onOpenSettings() }
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                        .testTag("home_user_chip"),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(NeonPurple.copy(alpha = 0.3f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = NeonPurple,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                    Text(
+                        text = currentUser.displayName.ifBlank { "Player" },
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = if (currentUser.authType == "google") "• Google" else "• Guest",
+                        fontSize = 11.sp,
+                        color = if (currentUser.authType == "google") NeonCyan else TextMuted
+                    )
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+            } else {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             // Hero Game Title & Stylized Logo
             HeroLogo()
@@ -133,6 +180,34 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = "PLAY (TWO PLAYER)",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.sp
+                    )
+                }
+
+                // PLAY ONLINE (Multiplayer with Friend) Button
+                Button(
+                    onClick = onOpenOnlinePlay,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                        .testTag("play_online_button")
+                        .shadow(12.dp, RoundedCornerShape(18.dp), spotColor = Color(0xFF00E676)),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF00E676),
+                        contentColor = Color(0xFF061A0F)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Public,
+                        contentDescription = null,
+                        modifier = Modifier.size(26.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "PLAY ONLINE",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 1.sp

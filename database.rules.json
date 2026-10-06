@@ -1,0 +1,29 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "rooms": {
+      ".read": "auth != null",
+      "$roomId": {
+        ".write": "auth != null && (
+          (!data.exists() && newData.child('playerX/uid').val() === auth.uid) ||
+          (data.exists() && (
+            data.child('playerX/uid').val() === auth.uid ||
+            data.child('playerO/uid').val() === auth.uid ||
+            (!data.child('playerO').exists() && newData.child('playerO/uid').val() === auth.uid)
+          ))
+        )"
+      }
+    },
+    "matchmaking": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null"
+      }
+    }
+  }
+}

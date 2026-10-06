@@ -1,9 +1,11 @@
 package com.example.viewmodel
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.audio.SoundManager
+import com.example.auth.GoogleAuthHelper
 import com.example.data.GamePreferences
 import com.example.logic.AiEngine
 import com.example.logic.GameEngine
@@ -13,6 +15,8 @@ import com.example.model.GameStatus
 import com.example.model.Player
 import com.example.model.Score
 import com.example.model.Screen
+import com.example.online.model.OnlineUser
+import com.example.online.repository.FirebaseManager
 import com.example.util.DeveloperDetector
 import com.example.util.HapticManager
 import kotlinx.coroutines.Job
@@ -24,8 +28,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class GameUiState(
-    val currentScreen: Screen = Screen.HOME,
-    val previousScreen: Screen = Screen.HOME,
+    val currentScreen: Screen = Screen.SPLASH,
+    val previousScreen: Screen = Screen.SPLASH,
     val gameMode: GameMode = GameMode.TwoPlayer,
     val board: List<Player?> = List(9) { null },
     val gameStatus: GameStatus = GameStatus.InProgress(Player.X),
@@ -35,7 +39,10 @@ data class GameUiState(
     val isVibrationEnabled: Boolean = true,
     val difficulty: Difficulty = Difficulty.MEDIUM,
     val hasSavedGame: Boolean = false,
-    val aiPlayer: Player = Player.O
+    val aiPlayer: Player = Player.O,
+    val isAuthLoading: Boolean = false,
+    val authError: String? = null,
+    val currentUser: OnlineUser? = null
 )
 
 class GameViewModel(application: Application) : AndroidViewModel(application) {
@@ -58,11 +65,114 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
 
     private var aiJob: Job? = null
+    private var profileJob: Job? = null
 
     init {
         soundManager.isSoundEnabled = prefs.isSoundEnabled
         soundManager.isMusicEnabled = prefs.isMusicEnabled
         hapticManager.isVibrationEnabled = prefs.isVibrationEnabled
+
+        checkInitialAuthState()
+    }
+
+    private fun checkInitialAuthState() {
+        viewModelScope.launch {
+            delay(900L) // Smooth splash branding experience
+            if (FirebaseManager.isAuthenticated()) {
+                val uid = FirebaseManager.getCurrentUid()
+                if (uid != null) {
+                    observeUserProfile(uid)
+                }
+                _uiState.update { it.copy(currentScreen = Screen.HOME) }
+            } else {
+                _uiState.update { it.copy(currentScreen = Screen.AUTH) }
+            }
+        }
+    }
+
+    private fun observeUserProfile(uid: String) {
+        profileJob?.cancel()
+        profileJob = viewModelScope.launch {
+            FirebaseManager.observeUserProfile(uid).collect { profile ->
+                _uiState.update { it.copy(currentUser = profile) }
+            }
+        }
+    }
+
+    fun continueAsGuest() {
+        soundManager.playClick()
+        _uiState.update { it.copy(isAuthLoading = true, authError = null) }
+        viewModelScope.launch {
+            val result = FirebaseManager.signInAnonymously()
+            result.fold(
+                onSuccess = { uid ->
+                    observeUserProfile(uid)
+                    soundManager.playWin()
+                    _uiState.update {
+                        it.copy(
+                            isAuthLoading = false,
+                            currentScreen = Screen.HOME,
+                            authError = null
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isAuthLoading = false,
+                            authError = error.message ?: "Guest sign-in failed. Please check internet connection."
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun continueWithGoogle(context: Context) {
+        soundManager.playClick()
+        _uiState.update { it.copy(isAuthLoading = true, authError = null) }
+        viewModelScope.launch {
+            val result = GoogleAuthHelper.signInWithGoogle(context)
+            result.fold(
+                onSuccess = { uid ->
+                    observeUserProfile(uid)
+                    soundManager.playWin()
+                    _uiState.update {
+                        it.copy(
+                            isAuthLoading = false,
+                            currentScreen = Screen.HOME,
+                            authError = null
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isAuthLoading = false,
+                            authError = error.message ?: "Google Sign-In failed."
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun dismissAuthError() {
+        _uiState.update { it.copy(authError = null) }
+    }
+
+    fun signOut() {
+        soundManager.playClick()
+        profileJob?.cancel()
+        profileJob = null
+        FirebaseManager.signOut()
+        _uiState.update {
+            it.copy(
+                currentUser = null,
+                currentScreen = Screen.AUTH,
+                authError = null
+            )
+        }
     }
 
     override fun onCleared() {
@@ -84,8 +194,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         soundManager.playClick()
         _uiState.update { current ->
             val target = when (current.currentScreen) {
-                Screen.GAME, Screen.SETTINGS, Screen.HOW_TO_PLAY, Screen.DEVELOPER_WEBVIEW -> Screen.HOME
-                Screen.HOME -> Screen.HOME
+                Screen.GAME, Screen.SETTINGS, Screen.HOW_TO_PLAY, Screen.DEVELOPER_WEBVIEW, Screen.ONLINE -> Screen.HOME
+                Screen.HOME, Screen.AUTH, Screen.SPLASH -> current.currentScreen
             }
             current.copy(currentScreen = target)
         }

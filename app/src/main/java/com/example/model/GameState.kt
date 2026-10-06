@@ -31,9 +31,12 @@ data class Score(
 )
 
 enum class Screen {
+    SPLASH,
+    AUTH,
     HOME,
     GAME,
     SETTINGS,
     HOW_TO_PLAY,
-    DEVELOPER_WEBVIEW
+    DEVELOPER_WEBVIEW,
+    ONLINE
 }

@@ -197,6 +197,12 @@ fun DeveloperWebViewScreen(
                             settings.builtInZoomControls = true
                             settings.displayZoomControls = false
 
+                            try {
+                                setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+                            } catch (_: Throwable) {
+                                setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
+                            }
+
                             webChromeClient = object : WebChromeClient() {
                                 override fun onProgressChanged(view: WebView?, newProgress: Int) {
                                     progress = newProgress / 100f

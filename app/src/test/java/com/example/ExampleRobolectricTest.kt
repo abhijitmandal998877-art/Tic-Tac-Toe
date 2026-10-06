@@ -162,9 +162,52 @@ class ExampleRobolectricTest {
     fun testOpenDeveloperSectionNavigation() {
         val app = ApplicationProvider.getApplicationContext<android.app.Application>()
         val viewModel = com.example.viewmodel.GameViewModel(app)
-        assertEquals(com.example.model.Screen.HOME, viewModel.uiState.value.currentScreen)
+        assertEquals(com.example.model.Screen.SPLASH, viewModel.uiState.value.currentScreen)
 
         viewModel.openDeveloperSection()
         assertEquals(com.example.model.Screen.DEVELOPER_WEBVIEW, viewModel.uiState.value.currentScreen)
+    }
+
+    @Test
+    fun testOnlineRoomRoleAndTurnValidation() {
+        val playerX = com.example.online.model.OnlinePlayerData(uid = "user_x", displayName = "PlayerX")
+        val playerO = com.example.online.model.OnlinePlayerData(uid = "user_o", displayName = "PlayerO")
+        val room = com.example.online.model.OnlineRoom(
+            roomId = "room_123",
+            roomCode = "A7K92P",
+            status = "PLAYING",
+            playerX = playerX,
+            playerO = playerO,
+            currentTurn = "X"
+        )
+
+        assertEquals("X", room.getMyRole("user_x"))
+        assertEquals("O", room.getMyRole("user_o"))
+        assertEquals(null, room.getMyRole("random_user"))
+
+        assertTrue(room.isMyTurn("user_x"))
+        org.junit.Assert.assertFalse(room.isMyTurn("user_o"))
+
+        val opponentOfX = room.getOpponent("user_x")
+        assertEquals("user_o", opponentOfX?.uid)
+
+        val opponentOfO = room.getOpponent("user_o")
+        assertEquals("user_x", opponentOfO?.uid)
+    }
+
+    @Test
+    fun testOnlineBoardWinDetection() {
+        val onlineBoard = listOf("X", "X", "X", "O", "O", "", "", "", "")
+        val playerBoard = onlineBoard.map {
+            when (it) {
+                "X" -> com.example.model.Player.X
+                "O" -> com.example.model.Player.O
+                else -> null
+            }
+        }
+        val winnerPair = com.example.logic.GameEngine.checkWinner(playerBoard)
+        assertNotNull(winnerPair)
+        assertEquals(com.example.model.Player.X, winnerPair?.first)
+        assertEquals(listOf(0, 1, 2), winnerPair?.second)
     }
 }

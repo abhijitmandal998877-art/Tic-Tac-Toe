@@ -12,6 +12,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.model.GameMode
@@ -21,6 +22,9 @@ import com.example.ui.screens.GameScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.HowToPlayScreen
 import com.example.ui.screens.SettingsScreen
+import com.example.ui.screens.auth.AuthScreen
+import com.example.ui.screens.online.OnlinePlayContainerScreen
+import com.example.ui.screens.splash.SplashScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.viewmodel.GameViewModel
 
@@ -41,12 +45,31 @@ fun TicTacToeApp(
     viewModel: GameViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets.safeDrawing
     ) { innerPadding ->
         when (uiState.currentScreen) {
+            Screen.SPLASH -> {
+                SplashScreen(
+                    modifier = Modifier.padding(innerPadding)
+                )
+            }
+            Screen.AUTH -> {
+                AuthScreen(
+                    isLoading = uiState.isAuthLoading,
+                    errorMessage = uiState.authError,
+                    onContinueAsGuest = {
+                        viewModel.continueAsGuest()
+                    },
+                    onContinueWithGoogle = {
+                        viewModel.continueWithGoogle(context)
+                    },
+                    modifier = Modifier.padding(innerPadding)
+                )
+            }
             Screen.HOME -> {
                 HomeScreen(
                     selectedDifficulty = uiState.difficulty,
@@ -61,6 +84,9 @@ fun TicTacToeApp(
                     onContinueTapped = {
                         viewModel.onContinueTapped()
                     },
+                    onOpenOnlinePlay = {
+                        viewModel.navigateTo(Screen.ONLINE)
+                    },
                     onOpenSettings = {
                         viewModel.navigateTo(Screen.SETTINGS)
                     },
@@ -70,6 +96,7 @@ fun TicTacToeApp(
                     onOpenDeveloperSection = {
                         viewModel.openDeveloperSection()
                     },
+                    currentUser = uiState.currentUser,
                     modifier = Modifier.padding(innerPadding)
                 )
             }
@@ -102,6 +129,9 @@ fun TicTacToeApp(
                     onResetScore = { viewModel.resetScore() },
                     onNavigateHowToPlay = { viewModel.navigateTo(Screen.HOW_TO_PLAY) },
                     onNavigateBack = { viewModel.navigateBack() },
+                    currentUser = uiState.currentUser,
+                    onSignOut = { viewModel.signOut() },
+                    onLinkGoogle = { viewModel.continueWithGoogle(context) },
                     modifier = Modifier.padding(innerPadding)
                 )
             }
@@ -114,6 +144,12 @@ fun TicTacToeApp(
             Screen.DEVELOPER_WEBVIEW -> {
                 DeveloperWebViewScreen(
                     onNavigateBack = { viewModel.navigateBack() },
+                    modifier = Modifier.padding(innerPadding)
+                )
+            }
+            Screen.ONLINE -> {
+                OnlinePlayContainerScreen(
+                    onNavigateBackToHome = { viewModel.navigateTo(Screen.HOME) },
                     modifier = Modifier.padding(innerPadding)
                 )
             }

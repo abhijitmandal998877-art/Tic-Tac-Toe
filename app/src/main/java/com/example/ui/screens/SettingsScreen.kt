@@ -22,9 +22,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
@@ -50,11 +54,15 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.online.model.OnlineUser
 import com.example.ui.components.GameBackground
 import com.example.ui.theme.DarkSurface
 import com.example.ui.theme.DarkSurfaceVariant
+import com.example.ui.theme.NeonAmber
 import com.example.ui.theme.NeonCyan
+import com.example.ui.theme.NeonEmerald
 import com.example.ui.theme.NeonPink
+import com.example.ui.theme.NeonPurple
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
@@ -70,13 +78,17 @@ fun SettingsScreen(
     onResetScore: () -> Unit,
     onNavigateHowToPlay: () -> Unit,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    currentUser: OnlineUser? = null,
+    onSignOut: () -> Unit = {},
+    onLinkGoogle: () -> Unit = {}
 ) {
     BackHandler {
         onNavigateBack()
     }
 
     var showResetDialog by remember { mutableStateOf(false) }
+    var showSignOutDialog by remember { mutableStateOf(false) }
 
     GameBackground(modifier = modifier) {
         Column(
@@ -114,6 +126,126 @@ fun SettingsScreen(
                     color = TextPrimary,
                     letterSpacing = 1.5.sp
                 )
+            }
+
+            // User Account Section
+            if (currentUser != null) {
+                SectionCard(title = "ACCOUNT & PROFILE") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
+                                    .background(NeonPurple.copy(alpha = 0.2f))
+                                    .border(1.5.dp, NeonPurple, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (currentUser.authType == "google") Icons.Default.AccountCircle else Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = NeonPurple,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = currentUser.displayName.ifBlank { "Player" },
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = if (currentUser.authType == "google") "Google Account" else "Guest Account",
+                                    fontSize = 12.sp,
+                                    color = if (currentUser.authType == "google") NeonCyan else TextSecondary
+                                )
+                            }
+                        }
+
+                        if (currentUser.authType != "google") {
+                            OutlinedButton(
+                                onClick = onLinkGoogle,
+                                modifier = Modifier.testTag("link_google_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Link,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = NeonCyan
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Link Google",
+                                    fontSize = 12.sp,
+                                    color = NeonCyan
+                                )
+                            }
+                        }
+                    }
+
+                    // Switch Account / Sign Out row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { showSignOutDialog = true }
+                            .padding(vertical = 10.dp, horizontal = 4.dp)
+                            .testTag("sign_out_button"),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(NeonPink.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Logout,
+                                    contentDescription = null,
+                                    tint = NeonPink,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Switch Account / Sign Out",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = "Change login or continue as a different player",
+                                    fontSize = 11.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = TextSecondary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
             }
 
             // Audio & Feedback Card
@@ -301,6 +433,52 @@ fun SettingsScreen(
                 OutlinedButton(
                     onClick = { showResetDialog = false },
                     modifier = Modifier.testTag("cancel_reset_button")
+                ) {
+                    Text("CANCEL")
+                }
+            },
+            containerColor = Color(0xFF162136),
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // Confirmation Dialog for Sign Out / Switch Account
+    if (showSignOutDialog) {
+        AlertDialog(
+            onDismissRequest = { showSignOutDialog = false },
+            title = {
+                Text(
+                    text = "Switch Account / Sign Out?",
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "You will be returned to the Welcome screen to sign in as guest or choose a different Google account.",
+                    color = TextSecondary,
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSignOutDialog = false
+                        onSignOut()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = NeonPink,
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.testTag("confirm_sign_out_button")
+                ) {
+                    Text("SIGN OUT", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showSignOutDialog = false },
+                    modifier = Modifier.testTag("cancel_sign_out_button")
                 ) {
                     Text("CANCEL")
                 }
