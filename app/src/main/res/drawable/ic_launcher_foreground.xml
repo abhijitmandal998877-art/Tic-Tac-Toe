@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Gaming Rounded-Square Badge Background (Safe zone: 21..87) -->
+    <path
+        android:fillColor="#221B3556"
+        android:strokeColor="#4038BDF8"
+        android:strokeWidth="1.5"
+        android:pathData="M30,24 L78,24 A6,6 0 0,1 84,30 L84,78 A6,6 0 0,1 78,84 L30,84 A6,6 0 0,1 24,78 L24,30 A6,6 0 0,1 30,24 Z" />
+
+    <!-- Center divider subtle grid line -->
+    <path
+        android:strokeColor="#25FFFFFF"
+        android:strokeWidth="1.2"
+        android:pathData="M54,26 L54,82" />
+
+    <!-- Stylized Neon Cyan "X" on left half (Center ~ (39, 54)) -->
+    <path
+        android:strokeColor="#00F0FF"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:pathData="M31,46 L47,62 M47,46 L31,62" />
+
+    <!-- Stylized Neon Coral/Pink "O" ring on right half (Center ~ (69, 54)) -->
+    <path
+        android:strokeColor="#FF2E93"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:pathData="M69,45 A9,9 0 1,1 68.99,45 Z" />
+
+    <!-- Subtle futuristic corner accents -->
+    <path
+        android:strokeColor="#00F0FF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M27,33 L27,27 L33,27" />
+    <path
+        android:strokeColor="#FF2E93"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M75,81 L81,81 L81,75" />
+</vector>
